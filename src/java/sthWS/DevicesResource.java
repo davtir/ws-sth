@@ -7,6 +7,7 @@ package sthWS;
 
 import entities.Media;
 import entities.Device;
+import entities.TreasureStatus;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -45,7 +46,7 @@ public class DevicesResource {
     public static Media _audio;
     public static Media _picture;
     public static String treasureID="";
-    public static Boolean found_ = new Boolean(false);
+    public static TreasureStatus treasureStatus = new TreasureStatus(false);
     /**
      * Creates a new instance of DevicesResource
      */
@@ -173,10 +174,29 @@ public class DevicesResource {
      * @return an instance of java.lang.String
      */
     @GET
-    @Path("/found")
-    @Produces(MediaType.TEXT_PLAIN)
+    @Path("/endgame")
+    @Produces(MediaType.APPLICATION_JSON)
     public Response getFound() {
-        return Response.status(200).entity(found_.toString()).build();
+    
+        JSONObject jsonEndgame = new JSONObject();
+        Media winner = treasureStatus.getWinner();
+        
+        String filename = "", data = "";
+        if ( winner != null && winner.getData() != null ) {
+            filename = winner.getFilename();
+            data = Base64.encodeBase64String(winner.getData());
+        }
+        
+        try {
+            jsonEndgame.put("STATUS", treasureStatus.isFound());
+            jsonEndgame.put("PIC_NAME", filename);            
+            jsonEndgame.put("PIC_DATA", data);
+        } catch (JSONException ex) {
+            LOG.warning("Error while building jsonTreasure");
+            return Response.status(404).entity("Error while building jsonTreasure").build();
+        }
+        
+        return Response.status(200).entity(jsonEndgame.toString()).build();   
     }
     
     /**
@@ -184,15 +204,40 @@ public class DevicesResource {
      * @return an instance of java.lang.String
      */
     @POST
-    @Path("/found")
-    @Consumes(MediaType.TEXT_PLAIN)
-    @Produces(MediaType.TEXT_PLAIN)
-    public Response postFound(String found) {
-      
+    @Path("/endgame")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response postFound(InputStream incoming) {
+        StringBuilder sb = new StringBuilder();
+        try {
+            BufferedReader br = new BufferedReader(new InputStreamReader(incoming));
+            String line = null;
+            while ( (line = br.readLine()) != null) {
+                sb.append(line);
+            }
+        } catch(IOException e) {
+            LOG.warning("Error while parsing JSON stream");
+            return Response.status(404).entity(sb.toString()).build();
+        }
         
-        found_ = Boolean.parseBoolean(found);
-        LOG.info("postFound. Value = "+found_);
-        return Response.status(200).entity(found_.toString()).build();
+        JSONObject jsonEndgame;
+        try {
+            jsonEndgame = new JSONObject(sb.toString());
+            Boolean status = Boolean.parseBoolean(jsonEndgame.getString("STATUS"));
+            String filename = jsonEndgame.getString("PIC_NAME");         
+            String data = jsonEndgame.getString("PIC_DATA");
+            
+            Media winner = new Media(filename, Base64.decodeBase64(data));
+            
+            treasureStatus.setFound(status);
+            treasureStatus.setWinner(winner);
+        } catch (JSONException e) {
+            e.printStackTrace();
+            LOG.warning("Error while parsing JSONObject");
+            return Response.status(404).entity(sb.toString()).build();           
+        }
+        
+        return Response.status(200).entity("Post succeded").build();
     }
     
     /**
