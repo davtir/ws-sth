@@ -77,7 +77,6 @@ public class DeviceResource {
             jsonDevice.put("LUMINOSITY", device.getLuminosity());
             jsonDevice.put("TEMPERATURE", device.getTemperature());            
             jsonDevice.put("ACCELERATION", device.getAcceleration());
-            jsonDevice.put("ROTATION", device.getRotation());
             
         } catch (JSONException ex) {
             LOG.warning("Error while building jsonDevice");

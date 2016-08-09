@@ -80,7 +80,6 @@ public class DevicesResource {
             jsonTreasure.put("LUMINOSITY", treasure.getLuminosity());
             jsonTreasure.put("TEMPERATURE", treasure.getTemperature());
             jsonTreasure.put("ACCELERATION", treasure.getAcceleration());
-            jsonTreasure.put("ROTATION", treasure.getRotation());
             
         } catch (JSONException ex) {
             LOG.warning("Error while building jsonTreasure");
@@ -139,18 +138,7 @@ public class DevicesResource {
             acceleration[1] = jArr.getDouble(1);
             acceleration[2] = jArr.getDouble(2);
             
-            double[] rotation = new double[3];
-            jArr = jsonDevice.getJSONArray("ROTATION");
-            if(jArr.length() != 3) {
-                LOG.warning("Invalid acceleration length");
-                return Response.status(404).entity(sb.toString()).build();
-            }
-            
-            rotation[0] = jArr.getDouble(0);
-            rotation[1] = jArr.getDouble(1);
-            rotation[2] = jArr.getDouble(2);
-            
-            Device device = new Device(id, name, role, latitude, longitude, luminosity, temperature, acceleration, rotation);
+            Device device = new Device(id, name, role, latitude, longitude, luminosity, temperature, acceleration);
             
             if (role.equals("T"))
                 treasureID=id;

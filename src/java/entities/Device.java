@@ -22,11 +22,10 @@ public class Device {
     private double luminosity_;
     private double temperature_;
     private double[] acceleration_;
-    private double[] rotation_;
     
-    public Device(String mac_address, String name, String role, double lat, double lon, double lux, double temp, double[] acc, double[] rot) throws RuntimeException {
-        if ( mac_address == null || name == null || acc == null || rot == null)  {
-            throw new RuntimeException("Invalid mac address or name or acceleration or rotation.");
+    public Device(String mac_address, String name, String role, double lat, double lon, double lux, double temp, double[] acc) throws RuntimeException {
+        if ( mac_address == null || name == null || acc == null)  {
+            throw new RuntimeException("Invalid mac address or name or acceleration.");
         }
         
         mac_address_ = mac_address;
@@ -37,7 +36,6 @@ public class Device {
         luminosity_ = lux;
         temperature_ = temp;
         acceleration_ = acc;
-        rotation_ = rot;
     }
 
     public double getLatitude() {
@@ -59,10 +57,6 @@ public class Device {
     public double[] getAcceleration() {
         return acceleration_;
     }
-
-    public double[] getRotation() {
-        return rotation_;
-    }
     
     public String getMACAddress() {
         return mac_address_;
@@ -78,7 +72,7 @@ public class Device {
 
     @Override
     public String toString() {
-        return "Device{" + "mac_address_=" + mac_address_ + ", name_=" + name_ + ", role_=" + role_ + ", latitude_=" + latitude_ + ", longitude_=" + longitude_ + ", luminosity_=" + luminosity_ + ", temperature_=" + temperature_ + ", acceleration_=" + acceleration_ + ", rotation_=" + rotation_ + '}';
+        return "Device{" + "mac_address_=" + mac_address_ + ", name_=" + name_ + ", role_=" + role_ + ", latitude_=" + latitude_ + ", longitude_=" + longitude_ + ", luminosity_=" + luminosity_ + ", temperature_=" + temperature_ + ", acceleration_=" + acceleration_ + '}';
     }
     
 
