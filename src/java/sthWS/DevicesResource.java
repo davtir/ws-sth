@@ -7,14 +7,13 @@ package sthWS;
 
 import entities.Media;
 import entities.Device;
+import entities.JsonParser;
 import entities.TreasureStatus;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.HashMap;
-import java.util.Map.Entry;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.UriInfo;
@@ -26,7 +25,6 @@ import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import org.apache.tomcat.util.codec.binary.Base64;
 import org.json.*;
 
 /**
@@ -47,6 +45,7 @@ public class DevicesResource {
     public static Media _picture;
     public static String treasureID="";
     public static TreasureStatus treasureStatus = new TreasureStatus(false);
+    
     /**
      * Creates a new instance of DevicesResource
      */
@@ -61,28 +60,20 @@ public class DevicesResource {
     @Path("/device")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getDevice() {
-        
-        JSONObject jsonTreasure = new JSONObject();
+        LOG.info("getDevice() function invoked.");
         Device treasure = map.get(treasureID);
         if(treasure == null) {
             
             LOG.warning("Error: No treasure in map");
             return Response.status(404).entity("No Treasure found").build();           
             
-        }    
+        }
+        
+        JSONObject jsonTreasure;
         try {
-            
-            jsonTreasure.put("ID", treasure.getMACAddress());
-            jsonTreasure.put("NAME", treasure.getName());
-            jsonTreasure.put("ROLE", treasure.getRole());
-            jsonTreasure.put("LATITUDE", treasure.getLatitude());
-            jsonTreasure.put("LONGITUDE", treasure.getLongitude());
-            jsonTreasure.put("LUMINOSITY", treasure.getLuminosity());
-            jsonTreasure.put("TEMPERATURE", treasure.getTemperature());
-            jsonTreasure.put("ACCELERATION", treasure.getAcceleration());
-            
+            jsonTreasure = JsonParser.createJsonFromDevice(treasure);
         } catch (JSONException ex) {
-            LOG.warning("Error while building jsonTreasure");
+            LOG.warning(ex.getMessage());
             return Response.status(404).entity("Error while building jsonTreasure").build();
         }
         
@@ -101,7 +92,7 @@ public class DevicesResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response postDevice(InputStream content) {
-        
+        LOG.info("postDevice() function invoked.");
         StringBuilder sb = new StringBuilder();
         try {
             BufferedReader br = new BufferedReader(new InputStreamReader(content));
@@ -114,46 +105,20 @@ public class DevicesResource {
             return Response.status(404).entity(sb.toString()).build();
         }
         
-        JSONObject jsonDevice;
-                
+        JSONObject jsonDevice;       
         try {
             
-            jsonDevice = new JSONObject(sb.toString());
-            String id = (String) jsonDevice.get("ID");
-            String name = (String) jsonDevice.get("NAME");      
-            String role = (String) jsonDevice.get("ROLE");
-            double latitude = jsonDevice.getDouble("LATITUDE");
-            double longitude = jsonDevice.getDouble("LONGITUDE");
-            double luminosity = jsonDevice.getDouble("LUMINOSITY");
-            double temperature = jsonDevice.getDouble("TEMPERATURE");
-            double[] acceleration = new double[3];
+            jsonDevice = new JSONObject(sb.toString());            
+            Device device = JsonParser.createDeviceFromJson(jsonDevice);
             
-            JSONArray jArr = jsonDevice.getJSONArray("ACCELERATION");
-            if(jArr.length() != 3) {
-                LOG.warning("Invalid acceleration length");
-                return Response.status(404).entity(sb.toString()).build();
-            }
-                
-            acceleration[0] = jArr.getDouble(0);
-            acceleration[1] = jArr.getDouble(1);
-            acceleration[2] = jArr.getDouble(2);
-            
-            Device device = new Device(id, name, role, latitude, longitude, luminosity, temperature, acceleration);
-            
-            if (role.equals("T"))
-                treasureID=id;
-            map.put(id, device);
-            
-            
+            if (device.getRole().equals("T"))
+                treasureID = device.getMACAddress();
+            map.put(device.getMACAddress(), device);           
         } catch (JSONException ex) {
-            ex.printStackTrace();
-            LOG.warning("Error while parsing JSONObject");
+            LOG.warning(ex.getMessage());
             return Response.status(404).entity(sb.toString()).build();
         }
-        
-
         return Response.status(200).entity("Post succeded").build();
-        //return Response.created(context.getAbsolutePath()).build();
     }
 
     
@@ -165,22 +130,12 @@ public class DevicesResource {
     @Path("/endgame")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getFound() {
-    
-        JSONObject jsonEndgame = new JSONObject();
-        Media winner = treasureStatus.getWinner();
-        
-        String filename = "", data = "";
-        if ( winner != null && winner.getData() != null ) {
-            filename = winner.getFilename();
-            data = Base64.encodeBase64String(winner.getData());
-        }
-        
+        LOG.info("getFound() function invoked.");
+        JSONObject jsonEndgame;
         try {
-            jsonEndgame.put("STATUS", treasureStatus.isFound());
-            jsonEndgame.put("PIC_NAME", filename);            
-            jsonEndgame.put("PIC_DATA", data);
+            jsonEndgame = JsonParser.createJsonFromTreasureStatus(treasureStatus);
         } catch (JSONException ex) {
-            LOG.warning("Error while building jsonTreasure");
+            LOG.warning(ex.getMessage());
             return Response.status(404).entity("Error while building jsonTreasure").build();
         }
         
@@ -196,6 +151,7 @@ public class DevicesResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response postFound(InputStream incoming) {
+        LOG.info("postFound() function invoked.");
         StringBuilder sb = new StringBuilder();
         try {
             BufferedReader br = new BufferedReader(new InputStreamReader(incoming));
@@ -211,17 +167,9 @@ public class DevicesResource {
         JSONObject jsonEndgame;
         try {
             jsonEndgame = new JSONObject(sb.toString());
-            Boolean status = Boolean.parseBoolean(jsonEndgame.getString("STATUS"));
-            String filename = jsonEndgame.getString("PIC_NAME");         
-            String data = jsonEndgame.getString("PIC_DATA");
-            
-            Media winner = new Media(filename, Base64.decodeBase64(data));
-            
-            treasureStatus.setFound(status);
-            treasureStatus.setWinner(winner);
+            treasureStatus = JsonParser.createTresureStatusFromJson(jsonEndgame);
         } catch (JSONException e) {
-            e.printStackTrace();
-            LOG.warning("Error while parsing JSONObject");
+            LOG.warning(e.getMessage());
             return Response.status(404).entity(sb.toString()).build();           
         }
         
@@ -241,6 +189,7 @@ public class DevicesResource {
     @Consumes(MediaType.TEXT_PLAIN)
     @Produces(MediaType.TEXT_PLAIN)
     public Response postDelete(String id) {
+        LOG.info("postDelete() function invoked.");
         DeviceResource dev = getDeviceResource(id);
         dev.delete();
         
@@ -252,6 +201,7 @@ public class DevicesResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response postAudio(InputStream incoming) {
+        LOG.info("postAudio() function invoked.");
         StringBuilder sb = new StringBuilder();
         try {
             BufferedReader br = new BufferedReader(new InputStreamReader(incoming));
@@ -267,13 +217,9 @@ public class DevicesResource {
         JSONObject jsonAudio;
         try {
             jsonAudio = new JSONObject(sb.toString());
-            String filename = jsonAudio.getString("AUDIO_NAME");         
-            String data = jsonAudio.getString("AUDIO_DATA");
-            
-            _audio = new Media(filename, Base64.decodeBase64(data));
+            _audio = JsonParser.createAudioMediaFromJson(jsonAudio);
         } catch (JSONException e) {
-            e.printStackTrace();
-            LOG.warning("Error while parsing JSONObject");
+            LOG.warning(e.getMessage());
             return Response.status(404).entity(sb.toString()).build();           
         }
         
@@ -284,23 +230,18 @@ public class DevicesResource {
     @Path("/audio")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getAudio() {
-        JSONObject jsonAudio = new JSONObject();
+        LOG.info("getAudio() function invoked.");
         if( _audio == null ) {
-            
             LOG.warning("No audio uploaded");
             return Response.status(404).entity("No audio uploaded").build();           
-            
-        }   
+        }
         
-        String filename = _audio.getFilename();
-        String data = Base64.encodeBase64String(_audio.getData());
+        JSONObject jsonAudio;
         try {
-            
-            jsonAudio.put("AUDIO_NAME", filename);            
-            jsonAudio.put("AUDIO_DATA", data);
+            jsonAudio = JsonParser.createJsonFromAudioMedia(_audio);
         } catch (JSONException ex) {
-            LOG.warning("Error while building jsonTreasure");
-            return Response.status(404).entity("Error while building jsonTreasure").build();
+            LOG.warning(ex.getMessage());
+            return Response.status(404).entity("Error while building json").build();
         }
         
         return Response.status(200).entity(jsonAudio.toString()).build();        
@@ -311,6 +252,7 @@ public class DevicesResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response postPicture(InputStream incoming) {
+        LOG.info("postPicture() function invoked.");
         StringBuilder sb = new StringBuilder();
         try {
             BufferedReader br = new BufferedReader(new InputStreamReader(incoming));
@@ -325,14 +267,10 @@ public class DevicesResource {
         
         JSONObject jsonPicture;
         try {
-            jsonPicture = new JSONObject(sb.toString());
-            String filename = jsonPicture.getString("PIC_NAME");         
-            String data = jsonPicture.getString("PIC_DATA");
-            
-            _picture = new Media(filename, Base64.decodeBase64(data));
+            jsonPicture = new JSONObject(sb.toString());            
+            _picture = JsonParser.createPictureMediaFromJson(jsonPicture);
         } catch (JSONException e) {
-            e.printStackTrace();
-            LOG.warning("Error while parsing JSONObject");
+            LOG.warning(e.getMessage());
             return Response.status(404).entity(sb.toString()).build();           
         }
         
@@ -343,22 +281,17 @@ public class DevicesResource {
     @Path("/picture")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getPicture() {
-        JSONObject jsonPicture = new JSONObject();
+        LOG.info("getPicture() function invoked.");
         if( _picture == null ) {
-            
             LOG.warning("No picture uploaded");
             return Response.status(404).entity("No picture uploaded").build();           
-            
         }   
         
-        String filename = _picture.getFilename();
-        String data = Base64.encodeBase64String(_picture.getData());
+        JSONObject jsonPicture;
         try {
-            
-            jsonPicture.put("PIC_NAME", filename);            
-            jsonPicture.put("PIC_DATA", data);
+           jsonPicture = JsonParser.createJsonFromPictureMedia(_picture);
         } catch (JSONException ex) {
-            LOG.warning("Error while building jsonTreasure");
+            LOG.warning(ex.getMessage());
             return Response.status(404).entity("Error while building jsonTreasure").build();
         }
         

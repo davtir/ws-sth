@@ -7,6 +7,8 @@
 package sthWS;
 
 import entities.Device;
+import entities.JsonParser;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.ws.rs.Produces;
 import javax.ws.rs.Consumes;
@@ -66,21 +68,13 @@ public class DeviceResource {
             LOG.warning("Device " + id + " not found");
             return Response.status(404).entity("Device " + id + " not found").build();
         }    
-        JSONObject jsonDevice = new JSONObject();
+        
+        JSONObject jsonDevice;
         try {
-            
-            jsonDevice.put("ID", device.getMACAddress());
-            jsonDevice.put("NAME", device.getName());
-            jsonDevice.put("ROLE", device.getRole());
-            jsonDevice.put("LATITUDE", device.getLatitude());
-            jsonDevice.put("LONGITUDE", device.getLongitude());
-            jsonDevice.put("LUMINOSITY", device.getLuminosity());
-            jsonDevice.put("TEMPERATURE", device.getTemperature());            
-            jsonDevice.put("ACCELERATION", device.getAcceleration());
-            
+            jsonDevice = JsonParser.createJsonFromDevice(device);
         } catch (JSONException ex) {
-            LOG.warning("Error while building jsonDevice");
-            return Response.status(404).entity("Error while building jsonDevice").build();
+           LOG.warning(ex.getMessage());
+           return Response.status(404).entity("Error while building jsonDevice").build();
         }
 
         return Response.status(200).entity(jsonDevice.toString()).build();
