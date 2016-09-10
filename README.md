@@ -28,6 +28,7 @@ based on devices sensors (i.e., suggestions about the environmental conditions p
 REPOSITORY LINKS
 ------------
 [[Android App Repository](https://github.com/davtir/pervasive-sth)]
+
 [[Web Server Repository](https://github.com/davtir/ws-sth)]
 
 TECHNOLOGIES
